@@ -1,0 +1,407 @@
+!!!
+CidrIp: !Sub "${MyIp}"
+
+
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template to create the required infrastructure for the Ghost application
+
+Parameters:
+  VPCBlock:
+    Type: String
+    Description: The CIDR Block for the VPC
+    Default: 10.10.0.0/16
+
+  PublicSubnet01Block:
+    Type: String
+    Description: The CIDR Block for the public subnet 01
+    Default: 192.168.0.0/28
+
+  PublicSubnet02Block:
+    Type: String
+    Description: The CIDR Block for the public subnet 02
+    Default: 192.168.0.16/28
+
+
+
+Mappings:
+  AZMap:
+    us-east-1a: 
+      CidrBlock: 10.10.1.0/24
+    us-east-1b: 
+      CidrBlock: 10.10.2.0/24
+    us-east-1c:
+      CidrBlock: 10.10.3.0/24
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: !Ref VPCBlock
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags: 
+        - Key: Name
+          Value: cloudx-vpc
+        - Key: Project
+          Value: CloudX
+        - Key: Part
+          Value: aminich_cloudx_lab_2
+
+  PublicSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: us-east-1a
+      CidrBlock: !FindInMap [AZMap, !Ref 'AWS::EC2::Subnet::AvailabilityZone', CidrBlock]
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: public_a
+        - Key: Project
+          Value: CloudX
+        - Key: Environment
+          Value: aminich_cloudx_lab_2
+
+  PublicSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: us-east-1b
+      CidrBlock: !FindInMap [AZMap, !Ref 'AWS::EC2::Subnet::AvailabilityZone', CidrBlock]
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: public_b
+        - Key: Project
+          Value: CloudX
+        - Key: Environment
+          Value: aminich_cloudx_lab_2
+
+  PublicSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: us-east-1c
+      CidrBlock: !FindInMap [AZMap, !Ref 'AWS::EC2::Subnet::AvailabilityZone', CidrBlock]
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: public_c
+        - Key: Project
+          Value: CloudX
+        - Key: Environment
+          Value: aminich_cloudx_lab_2
+
+
+
+
+
+
+
+
+
+
+
+  IGW: 
+    Type: AWS::EC2::InternetGateway
+    Properties: 
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-IGW
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+          Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      InternetGatewayId: !Ref IGW
+      VpcId: !Ref VPC
+
+  NatGateway01:
+    DependsOn:
+    - PublicSubnet01
+    - VPCGatewayAttachment
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: eipalloc-***************
+      SubnetId: !Ref PublicSubnet01
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-NatGateway01
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+          Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  NatGateway02:
+    DependsOn:
+    - PublicSubnet02
+    - VPCGatewayAttachment
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: eipalloc-******************
+      SubnetId: !Ref PublicSubnet02
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-NatGateway02
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+          Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-PublicRouteTable
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+          Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  PrivateRouteTable01:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-PrivateRouteTable01
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+          Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  PrivateRouteTable02:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-PrivateRouteTable02
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+          Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  PublicRoute:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IGW
+
+  PrivateRoute01:
+    DependsOn:
+    - VPCGatewayAttachment
+    - NatGateway01
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable01
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway01
+
+  PrivateRoute02:
+    DependsOn:
+    - VPCGatewayAttachment
+    - NatGateway02
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable02
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway02
+
+  PrivateSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-central-1a
+      CidrBlock: !Ref PrivateSubnet01Block
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-PrivateSubnet01
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+          Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  PrivateSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-central-1b
+      CidrBlock: !Ref PrivateSubnet02Block
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-PrivateSubnet02
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+         Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  PrivateSubnet03:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-central-1a
+      CidrBlock: !Ref PrivateSubnet03Block
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-PrivateSubnet03
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+          Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  PrivateSubnet04:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-central-1b
+      CidrBlock: !Ref PrivateSubnet04Block
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-PrivateSubnet04
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+          Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  PublicSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: eu-central-1a
+      CidrBlock: !Ref PublicSubnet01Block
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-PublicSubnet01
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+          Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  PublicSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: eu-central-1b
+      CidrBlock: !Ref PublicSubnet02Block
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: eu-central-1-test-Environment-PublicSubnet02
+        - Key: createdBy
+          Value: Maureen Barasa
+        - Key: Project
+          Value: test-blog
+        - Key: Environment
+          Value: test 
+
+  PublicSubnet01RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet01
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet02RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet02
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateSubnet01RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet01
+      RouteTableId: !Ref PrivateRouteTable01
+
+  PrivateSubnet02RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet02
+      RouteTableId: !Ref PrivateRouteTable02
+
+  PrivateSubnet03RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet03
+      RouteTableId: !Ref PrivateRouteTable01
+
+  PrivateSubnet04RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet04
+      RouteTableId: !Ref PrivateRouteTable02
+
+Outputs:
+  PublicSubnet01Id:
+    Description: Public Subnet 01 ID in the VPC
+    Value: !Ref PublicSubnet01
+    Export: 
+      Name: !Sub "${AWS::StackName}-PublicSubnet01Id"
+
+  PublicSubnet02Id:
+    Description: Public Subnet 02 ID in the VPC
+    Value: !Ref PublicSubnet02
+    Export: 
+      Name: !Sub "${AWS::StackName}-PublicSubnet02Id"
+
+  PrivateSubne01tId:
+    Description: Private Subnet 01 ID in the VPC
+    Value: !Ref PrivateSubnet01
+    Export: 
+      Name: !Sub "${AWS::StackName}-PrivateSubnetId"
+
+  PrivateSubne02tId:
+    Description: Private Subnet 02 ID in the VPC
+    Value: !Ref PrivateSubnet02
+    Export: 
+      Name: !Sub "${AWS::StackName}-PrivateSubnet02Id"
+
+  PrivateSubne03tId:
+    Description: Private Subnet 03 ID in the VPC
+    Value: !Ref PrivateSubnet03
+    Export: 
+      Name: !Sub "${AWS::StackName}-PrivateSubnet03Id"
+
+  PrivateSubne04tId:
+    Description: Private Subnet IDs in the VPC
+    Value: !Ref PrivateSubnet04
+    Export: 
+      Name: !Sub "${AWS::StackName}-PrivateSubnet04Id"
+
+  VpcId:
+    Description: The VPC Id
+    Value: !Ref VPC
+    Export: 
+      Name: !Sub "${AWS::StackName}-VPCID"
